@@ -59,6 +59,8 @@ def _write_overrides(data: dict) -> None:
             json.dump(data, fh, indent=4)
             fh.flush()
             os.fsync(fh.fileno())
+        # mkstemp creates 0600; the freqtrade container user must read it
+        os.chmod(tmp, 0o644)
         os.replace(tmp, OVERRIDES_PATH)
     finally:
         if os.path.exists(tmp):

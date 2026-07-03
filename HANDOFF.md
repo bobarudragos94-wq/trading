@@ -22,8 +22,8 @@ README.md.
 | M0 scaffold | ✅ committed | compose validated, `make test` green |
 | M1 RiskGuard | ✅ committed | 100% stmt+branch coverage on riskguard/ |
 | M2 dry-run boot | ✅ committed | verified live against Kraken in sandbox: 25-pair whitelist, REST /status, forced dry trade w/ ATR stop, hot reload |
-| M3 strategies+backtests | 🔶 in progress | see "M3 state" below |
-| M4 strategist+orchestrator | 🔶 code written, untested | see "M4 state" below |
+| M3 strategies+backtests | ✅ committed | table + honest read below; lookahead clean; recursive ≤0.08% at startup 499 |
+| M4 strategist+orchestrator | ✅ committed | fake verdicts (valid/malicious/invalid) demoed end-to-end against live bot; REAL Claude call still pending user's ANTHROPIC_API_KEY (fallback path journaled instead) |
 | M5 breaker e2e demo | ⬜ | plan below |
 | M6 daily report + TG cmds | ⬜ | plan below |
 | M7 go-live gate + runbook | ⬜ | plan below |
@@ -106,7 +106,20 @@ To finish M3:
 3. `make test` green → commit M3 → push → report table + honest read to
    the user (in Romanian).
 
-## M4 state (code written, needs tests + demo)
+## M4 state (DONE — notes for follow-up)
+
+All items below are implemented, tested (36 tests) and demoed against the
+live dry-run bot: valid verdict applied (static whitelist + preset visible
+in /show_config after reload), malicious verdict clamped (100%→2%, 50→4
+trades, evil pairs dropped, whitelist truncated to 8), invalid output →
+defensive fallback keeping current strategy; everything journaled (S12).
+Gotcha fixed: overrides.json must be chmod 0644 (mkstemp gives 0600 and the
+container's ftuser can't read it → freqtrade reload dies).
+Remaining for the user: set ANTHROPIC_API_KEY and run one verdict cycle to
+log the first REAL Claude call (`llm_call` event) — the no-key path
+(`llm_call_skipped` → defensive) is already journaled and demoed.
+
+## M4 original plan (kept for reference)
 
 Written (untested):
 - `strategist/journal.py` — append-only JSONL (S12), `append()` + `tail()`.
