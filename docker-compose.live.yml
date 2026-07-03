@@ -1,0 +1,16 @@
+# Live-mode override. NEVER use directly — only through `make live`,
+# which runs the full go-live gate first (tests, key permission check,
+# S1–S12 acknowledgement). See README "Go-live procedure".
+
+services:
+  freqtrade:
+    command: >
+      trade
+      --config /freqtrade/user_data/config.live.json
+      --config /freqtrade/user_data/runtime/overrides.json
+    environment:
+      TRADING_MODE: live
+
+  brain:
+    environment:
+      TRADING_MODE: live

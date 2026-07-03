@@ -1,0 +1,93 @@
+# Santinela — dry-run compose file (default).
+# Live mode uses an additional override file (docker-compose.live.yml)
+# and is gated by `make live` (S11). See README "Go-live procedure".
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  freqtrade:
+    image: freqtradeorg/freqtrade:2026.6
+    container_name: santinela-freqtrade
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ./user_data:/freqtrade/user_data
+      - ./riskguard:/freqtrade/riskguard:ro
+      - ./journal:/freqtrade/journal
+    environment:
+      TZ: ${TZ:-Europe/Bucharest}
+      TRADING_MODE: ${TRADING_MODE:-dry}
+      # PYTHONPATH lets strategies import the read-only riskguard package.
+      PYTHONPATH: /freqtrade
+      # Freqtrade env-var config overrides — secrets never live in JSON files.
+      FREQTRADE__EXCHANGE__NAME: ${EXCHANGE_ID:-kraken}
+      FREQTRADE__EXCHANGE__KEY: ${EXCHANGE_KEY:-}
+      FREQTRADE__EXCHANGE__SECRET: ${EXCHANGE_SECRET:-}
+      FREQTRADE__TELEGRAM__ENABLED: ${TELEGRAM_ENABLED:-false}
+      FREQTRADE__TELEGRAM__TOKEN: ${TELEGRAM_TOKEN:-}
+      FREQTRADE__TELEGRAM__CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      FREQTRADE__API_SERVER__USERNAME: ${FT_API_USERNAME:-santinela}
+      FREQTRADE__API_SERVER__PASSWORD: ${FT_API_PASSWORD:?set FT_API_PASSWORD in .env}
+      FREQTRADE__API_SERVER__JWT_SECRET_KEY: ${FT_JWT_SECRET:?set FT_JWT_SECRET in .env}
+      FREQTRADE__API_SERVER__WS_TOKEN: ${FT_WS_TOKEN:?set FT_WS_TOKEN in .env}
+    ports:
+      # FreqUI / REST API, reachable from the host machine only.
+      - "127.0.0.1:8080:8080"
+    command: >
+      trade
+      --config /freqtrade/user_data/config.dryrun.json
+      --config /freqtrade/user_data/runtime/overrides.json
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v1/ping', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  brain:
+    build:
+      context: .
+      dockerfile: Dockerfile.brain
+    container_name: santinela-brain
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      freqtrade:
+        condition: service_healthy
+    volumes:
+      - ./strategist:/app/strategist:ro
+      - ./orchestrator:/app/orchestrator:ro
+      - ./riskguard:/app/riskguard:ro
+      - ./user_data:/app/user_data
+      - ./journal:/app/journal
+      - ./reports:/app/reports
+    environment:
+      TZ: ${TZ:-Europe/Bucharest}
+      TRADING_MODE: ${TRADING_MODE:-dry}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      STRATEGIST_MODEL: ${STRATEGIST_MODEL:-claude-sonnet-4-6}
+      FT_API_URL: http://freqtrade:8080
+      FT_API_USERNAME: ${FT_API_USERNAME:-santinela}
+      FT_API_PASSWORD: ${FT_API_PASSWORD:?set FT_API_PASSWORD in .env}
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    command: ["python", "-m", "strategist.main"]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,sys,time; p='/app/journal/heartbeat'; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p) < 900 else 1)"
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 120s

@@ -1,0 +1,13 @@
+{
+    "$comment": "Runtime overrides written by the orchestrator after each clamped verdict. Bootstrapped from this example by `make setup`. Values here can only ever be MORE conservative than riskguard caps — the orchestrator clamps before writing, and strategies re-check riskguard before every entry.",
+    "strategy": "TrendRider",
+    "max_open_trades": 2,
+    "santinela": {
+        "risk_mode": "defensive",
+        "risk_per_trade_pct": 0.75,
+        "entries_enabled": true,
+        "active_strategy": "TrendRider",
+        "verdict_id": null,
+        "applied_at": null
+    }
+}

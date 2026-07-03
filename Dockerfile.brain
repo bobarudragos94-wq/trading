@@ -1,0 +1,14 @@
+# "Brain" service: LLM Strategist + Orchestrator + RiskGuard monitor.
+# Based on the same pinned freqtrade image as the execution engine so
+# pandas/numpy/requests versions stay aligned across services.
+FROM freqtradeorg/freqtrade:2026.6
+
+USER ftuser
+RUN pip install --user --no-cache-dir anthropic==0.116.0
+
+WORKDIR /app
+ENV PYTHONPATH=/app
+
+# Code is volume-mounted read-only by docker-compose; nothing to COPY.
+ENTRYPOINT []
+CMD ["python", "-m", "strategist.main"]

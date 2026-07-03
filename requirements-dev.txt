@@ -1,0 +1,7 @@
+# Local development & test environment (pinned).
+# Runtime containers get their dependencies from the pinned docker images.
+freqtrade==2026.6
+anthropic==0.116.0
+pydantic==2.13.4
+pytest==9.1.1
+pytest-cov==7.1.0

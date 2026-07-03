@@ -1,0 +1,42 @@
+# Secrets & live config — NEVER commit these
+.env
+user_data/config.live.json
+
+# Runtime state (mutated by the orchestrator / riskguard at runtime)
+user_data/runtime/overrides.json
+user_data/riskguard_state/
+user_data/strategist_control.json
+
+# Append-only journal & generated reports
+journal/*
+!journal/.gitkeep
+reports/*
+!reports/.gitkeep
+
+# Freqtrade runtime artifacts
+user_data/data/
+user_data/logs/
+user_data/backtest_results/
+user_data/hyperopt_results/
+user_data/plot/
+user_data/notebooks/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
