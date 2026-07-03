@@ -24,7 +24,7 @@ README.md.
 | M2 dry-run boot | ✅ committed | verified live against Kraken in sandbox: 25-pair whitelist, REST /status, forced dry trade w/ ATR stop, hot reload |
 | M3 strategies+backtests | ✅ committed | table + honest read below; lookahead clean; recursive ≤0.08% at startup 499 |
 | M4 strategist+orchestrator | ✅ committed | fake verdicts (valid/malicious/invalid) demoed end-to-end against live bot; REAL Claude call still pending user's ANTHROPIC_API_KEY (fallback path journaled instead) |
-| M5 breaker e2e demo | ⬜ | plan below |
+| M5 breaker e2e demo | ✅ committed | S8 via 6 REAL dry-run trades + live entry-refusal in bot log; S6/S7 via injected equity through brain poll path; S7 restart gate all 4 cases; demo caught+fixed a fail-open bug (state file perms 0600 → unreadable in container → looked like "no breakers"; now 0644 + fail-closed `state_is_unreadable` check in strategy) |
 | M6 daily report + TG cmds | ⬜ | plan below |
 | M7 go-live gate + runbook | ⬜ | plan below |
 

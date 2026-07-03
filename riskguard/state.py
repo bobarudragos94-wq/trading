@@ -59,6 +59,11 @@ def save_state(state_dir: str | Path, state: GuardState) -> None:
             json.dump(asdict(state), fh, indent=2)
             fh.flush()
             os.fsync(fh.fileno())
+        # mkstemp creates 0600; the freqtrade container user (different uid)
+        # must be able to read the guard state — an unreadable state file
+        # would otherwise silently look like "no breakers" to a lenient
+        # reader (see state_is_unreadable / the strategy's fail-closed gate).
+        os.chmod(tmp, 0o644)
         os.replace(tmp, path)
     finally:
         if os.path.exists(tmp):
@@ -80,11 +85,29 @@ def load_state(state_dir: str | Path) -> GuardState:
     return GuardState(**{k: v for k, v in raw.items() if k in known})
 
 
+def state_is_unreadable(state_dir: str | Path) -> bool:
+    """True when a state file EXISTS but cannot be read or parsed.
+
+    Distinguishes "legitimately fresh" (no file yet — first boot) from
+    "present but broken" (permissions, corruption). Entry gates must treat
+    the latter as fail-closed: a breaker might be recorded in there.
+    """
+    path = _state_path(state_dir)
+    if not path.exists():
+        return False
+    try:
+        json.loads(path.read_text())
+        return False
+    except (OSError, ValueError):
+        return True
+
+
 def write_kill_file(state_dir: str | Path, reason: str, now: datetime | None = None) -> None:
     now = now or datetime.now(timezone.utc)
     path = kill_file_path(state_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{now.isoformat()} {reason}\n")
+    path.chmod(0o644)
 
 
 def is_killed(state_dir: str | Path) -> bool:

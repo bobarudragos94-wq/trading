@@ -24,7 +24,7 @@ from freqtrade.persistence import Trade
 from freqtrade.strategy import IStrategy
 
 from riskguard.guard import LOCKED, can_open_new_trade, check_breakers, position_stake
-from riskguard.state import GuardState, is_killed, load_state
+from riskguard.state import GuardState, is_killed, load_state, state_is_unreadable
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +161,11 @@ class SantinelaBase(IStrategy):
         live_like = self.dp and self.dp.runmode.value in ("live", "dry_run")
         if live_like and is_killed(self._guard_dir()):
             logger.error("%s: S7 KILLED marker present — entry refused", pair)
+            return False
+        if live_like and state_is_unreadable(self._guard_dir()):
+            # Fail CLOSED: a state file exists but cannot be read — it may
+            # record an active breaker. Never trade blind.
+            logger.critical("%s: guard state unreadable — entry refused", pair)
             return False
 
         state = self._guard_state()

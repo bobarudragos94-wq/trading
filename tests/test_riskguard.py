@@ -27,6 +27,7 @@ from riskguard.state import (
     is_killed,
     load_state,
     save_state,
+    state_is_unreadable,
     try_resume_after_kill,
     write_kill_file,
 )
@@ -532,6 +533,24 @@ def test_resume_acknowledged_without_equity_keeps_hwm(tmp_path):
     st = GuardState(killed=True, hwm=1000.0, last_equity=0.0)
     ok, _ = try_resume_after_kill(tmp_path, st, acknowledged=True)
     assert ok and not st.killed and st.hwm == 1000.0
+
+
+def test_state_file_is_world_readable(tmp_path):
+    """The freqtrade container runs as a different uid — 0600 state files
+    would silently read as 'no breakers' (fail-open). Must be 0644."""
+    save_state(tmp_path, fresh_state())
+    mode = (tmp_path / "state.json").stat().st_mode & 0o777
+    assert mode == 0o644
+    write_kill_file(tmp_path, "S7")
+    assert (tmp_path / "KILLED").stat().st_mode & 0o777 == 0o644
+
+
+def test_state_unreadable_detection(tmp_path):
+    assert state_is_unreadable(tmp_path) is False  # missing = fresh, fine
+    save_state(tmp_path, fresh_state())
+    assert state_is_unreadable(tmp_path) is False  # healthy
+    (tmp_path / "state.json").write_text("{broken json")
+    assert state_is_unreadable(tmp_path) is True  # present but broken
 
 
 def test_save_state_cleans_tmp_file_on_failure(tmp_path):
