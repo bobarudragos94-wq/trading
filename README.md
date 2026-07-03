@@ -3,7 +3,13 @@
 Freqtrade execution engine + Claude-powered "Strategist" for slow, high-level
 decisions + a locked, deterministic RiskGuard that nothing can bypass.
 
-> **Status: under construction, milestone by milestone. Dry-run only.**
+> **Status: DRY-RUN ONLY.** The v1 baseline strategies showed **negative
+> expectancy in every backtested regime** at realistic retail costs (see
+> "Measured backtest results"). Per the philosophy below, live trading is
+> blocked by the go-live gate until a configuration with a demonstrated,
+> walk-forward-validated edge exists AND ≥4 clean weeks of dry-run back it
+> up. The infrastructure is complete; the edge is not. That is a finding,
+> not a failure.
 
 ---
 
@@ -98,14 +104,108 @@ make logs       # watch it
 
 FreqUI: http://127.0.0.1:8080 (credentials from `.env`).
 
+## Measured backtest results (v1 baseline — do not skip this section)
+
+Windows (OKX USDT data — Kraken's public API serves only ~720 candles, so
+deep history comes from OKX through the standard `freqtrade download-data`
+path; live trading remains Kraken/USDC, same assets):
+
+- **bear** 2022-04-01→2022-11-30, **bull** 2023-10-01→2024-03-31,
+  **range** 2024-04-01→2024-09-30
+- fees 0.35%/side (Kraken tier-0 maker/taker blend + slippage allowance),
+  conservative other-side fills, neutral preset (1.25% risk, 3 slots)
+
+| strategy | window | trades | win% | profit% | PF | maxDD% |
+|---|---|---|---|---|---|---|
+| TrendRider | bear | 177 | 23.2 | -38.6 | 0.30 | 38.8 |
+| TrendRider | bull | 483 | 36.2 | -62.8 | 0.46 | 63.6 |
+| TrendRider | range | 138 | 24.6 | -27.4 | 0.22 | 27.4 |
+| MeanRevRanger | bear | 365 | 37.8 | -49.2 | 0.35 | 49.9 |
+| MeanRevRanger | bull | 257 | 40.9 | -27.7 | 0.51 | 28.4 |
+| MeanRevRanger | range | 262 | 35.5 | -34.5 | 0.32 | 35.6 |
+
+Lookahead-analysis: clean for both strategies (0 biased signals).
+Recursive-analysis: max indicator variance 0.079% at the configured warmup.
+
+**Honest read:** both v1 strategies lose in every regime. Exit-reason stats
+show why: initial 2×ATR stops average ≈−3.5% in ~4h, the 1.5×ATR trail cuts
+winners at ≈+1R, the EMA20 exit loses on average, and ~0.7–0.9% round-trip
+costs dominate at 1h signal frequency. Candidate directions (validate with
+`make hyperopt` walk-forward before believing anything): slower signals
+(4h), wider trailing, stricter entry filters to cut trade count, maker-only
+exits. Until a config wins out-of-sample across regimes, the go-live gate
+stays shut.
+
 ## Go-live procedure
 
-Documented in full once M7 lands. In short: 3 backtest regimes clean +
-lookahead/recursive analysis clean + ≥4 weeks dry-run (≥30 trades, profit
-factor ≥1.15, max DD ≤12%, zero unhandled exceptions) + trade-only API keys
-verified + `TRADING_MODE=live` + `config.live.json` + typing the confirmation
-phrase at the gate. Each step is enforced by `make live`, not by good
-intentions.
+`make live` runs `scripts/go_live_gate.py`, which refuses unless ALL of:
+
+1. Full `pytest` suite green.
+2. `TRADING_MODE=live` in `.env`.
+3. `user_data/config.live.json` exists, valid, spot-only, `dry_run=false`,
+   USDC stake, no secrets inside, `force_entry_enable=false`.
+4. Secrets configured (exchange key/secret; strong `FT_API_PASSWORD`).
+5. **S9**: the exchange key is verified **trade-only** — a withdrawal-info
+   probe must be DENIED by the exchange. Keys with withdrawal rights are
+   refused, here and again at every live boot.
+6. **Dry-run record** (§7.3): ≥28 days span, ≥30 closed trades, profit
+   factor ≥1.15, max drawdown ≤12% — measured from the dry-run database,
+   never self-reported.
+7. Journal present (S12).
+8. You type exactly `INTELEG RISCUL` at the prompt (interactive TTY only).
+
+Then — and only then — the live compose stack starts. Start with money you
+can afford to lose entirely.
+
+## Runbook
+
+### Daily operation (dry-run or live)
+- `make logs` tails both services; FreqUI at http://127.0.0.1:8080.
+- The brain journals every decision to `journal/*.jsonl` (append-only) and
+  writes a daily report to `reports/YYYY-MM-DD.md` at 07:00
+  (Europe/Bucharest), with a Telegram summary when configured.
+- Telegram: freqtrade bot answers `/status /profit /daily /stopentry /stop`;
+  the Santinela bot (second token) answers `/guard /verdict /panic`.
+
+### Panic procedure
+1. Send `/panic` to the Santinela bot → it arms and asks for confirmation.
+2. Reply exactly `CONFIRM PANIC` within 5 minutes → entries stop and every
+   open position is market-exited. Any other reply disarms.
+3. Without Telegram: `docker compose exec freqtrade freqtrade stop` or
+   `make stop` (stops containers; open positions keep exchange-side stops
+   only if `stoploss_on_exchange` is enabled — live config enables it).
+
+### After an S7 kill switch
+1. The bot is stopped, `user_data/riskguard_state/KILLED` exists, Telegram
+   alerted. Investigate first — the journal has the full decision trail.
+2. Resume ONLY deliberately: remove the `KILLED` file manually, set
+   `ACKNOWLEDGE_DRAWDOWN=1` in `.env`, restart (`make dryrun`/`make live`).
+   Both steps are required; the high-water mark re-bases on resume. Unset
+   `ACKNOWLEDGE_DRAWDOWN` afterwards.
+
+### Updating
+- `git pull`, then `make test` (must be green), then `make dryrun` —
+  compose rebuilds the brain image and restarts pinned containers.
+- Never edit risk limits at runtime; they live in `riskguard/guard.py` and
+  require code review + redeploy by design.
+
+### Backups
+- Back up `user_data/*.sqlite` (trade DBs), `journal/`,
+  `user_data/riskguard_state/` and your `.env` (offline). Everything else
+  is reproducible from git.
+
+### Windows notes
+- Requires Docker Desktop (WSL2 backend) and GNU make (via Git Bash, WSL,
+  or `choco install make`). Run everything from the repo root.
+- Laptop must not sleep: set power plan accordingly; Docker Desktop
+  "Start at login" + compose `restart: unless-stopped` handle reboots.
+
+### Data & research
+- `make data` downloads OKX history for backtesting; `make backtest` runs
+  the 3-window suite + lookahead/recursive analysis;
+  `ENABLE_PROTECTIONS=1 make backtest` adds freqtrade-level protections.
+- `make hyperopt` (bounded spaces, walk-forward) — reject any params that
+  only win in one regime.
 
 ## Repository layout
 

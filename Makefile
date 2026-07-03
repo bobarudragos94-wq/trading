@@ -51,9 +51,10 @@ dryrun: test
 
 # Live mode is a deliberate, gated, multi-step action (S11).
 live: test
-	$(PY) scripts/go_live_gate.py
-	$(COMPOSE) -f docker-compose.yml -f docker-compose.live.yml up -d --build
-	@echo ">> LIVE stack started. Monitor it. You can stop entries any time with /stopentry."
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+	$(PY) scripts/go_live_gate.py && \
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.live.yml up -d --build && \
+	echo ">> LIVE stack started. Monitor it. You can stop entries any time with /stopentry."
 
 report:
 	$(COMPOSE) exec brain python -m strategist.daily_report || \

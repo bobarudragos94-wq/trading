@@ -26,7 +26,27 @@ README.md.
 | M4 strategist+orchestrator | ✅ committed | fake verdicts (valid/malicious/invalid) demoed end-to-end against live bot; REAL Claude call still pending user's ANTHROPIC_API_KEY (fallback path journaled instead) |
 | M5 breaker e2e demo | ✅ committed | S8 via 6 REAL dry-run trades + live entry-refusal in bot log; S6/S7 via injected equity through brain poll path; S7 restart gate all 4 cases; demo caught+fixed a fail-open bug (state file perms 0600 → unreadable in container → looked like "no breakers"; now 0644 + fail-closed `state_is_unreadable` check in strategy) |
 | M6 daily report + TG cmds | ✅ committed | sample report from live bot in docs/examples/sample-daily-report.md; /guard /verdict /panic via SECOND bot token (SANTINELA_TELEGRAM_TOKEN), two-step panic tested (9 tests) |
-| M7 go-live gate + runbook | ⬜ | plan below |
+| M7 go-live gate + runbook | ✅ committed | gate refuses without every precondition (demoed); S9 probe implemented for Kraken (fail-closed for other exchanges); README runbook complete |
+
+## Project complete — what remains is for the USER (next session: help them)
+
+1. Copy `.env.example` → `.env`, fill: ANTHROPIC_API_KEY, TELEGRAM_TOKEN +
+   SANTINELA_TELEGRAM_TOKEN (two bots) + TELEGRAM_CHAT_ID, strong
+   FT_API_PASSWORD / FT_JWT_SECRET / FT_WS_TOKEN (`openssl rand -hex 32`).
+2. `make setup && make test && make dryrun` on their Windows laptop
+   (Docker Desktop + WSL2; GNU make). Verify Telegram /status and /guard.
+3. First REAL Claude verdict: with the key set, wait for a 4h boundary (or
+   run one verdict_cycle manually) and confirm an `llm_call` +
+   `verdict`/`verdict_applied` pair in the journal.
+4. THE EDGE PROBLEM (most important): v1 strategies have negative
+   expectancy everywhere (see README table). Before any live talk:
+   research slower signals (4h), stricter filters, wider trails; validate
+   with `make hyperopt` walk-forward; only a config that wins
+   out-of-sample across regimes counts. Then ≥4 weeks dry-run meeting
+   §7.3 thresholds. The gate enforces all of this mechanically.
+5. Optional hardening ideas (not spec'd): auto-restart watchdog for the
+   brain on Windows, journal rotation/compression, FreqUI exposure via
+   Tailscale instead of localhost.
 
 ## Environment facts (sandbox-specific, re-verify if resuming elsewhere)
 

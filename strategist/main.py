@@ -87,6 +87,12 @@ def boot_checks(api: FreqtradeAPI) -> "object":
     mode = os.environ.get("TRADING_MODE", "dry")
     if config.get("dry_run") is False and mode != "live":
         errors.append("S11: freqtrade runs with dry_run=false but TRADING_MODE!=live")
+    if mode == "live":
+        # S9: live keys must be trade-only; refuse to run otherwise.
+        from orchestrator.exchange_permissions import verify_no_withdrawal_rights
+        result = verify_no_withdrawal_rights()
+        if not result.ok:
+            errors.append(f"S9: {result.reason}")
     if errors:
         journal.append("boot_refused", {"reason": errors})
         logger.critical("BOOT REFUSED, locked-rule violations: %s", errors)
