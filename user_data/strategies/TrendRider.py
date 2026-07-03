@@ -112,7 +112,7 @@ class TrendRider(SantinelaBase):
         initial_risk = self.stop_atr.value * entry_atr / trade.open_rate
 
         if current_profit >= initial_risk:  # +1R reached -> ATR trail
-            current_atr = self._entry_atr(pair, default=entry_atr)
+            current_atr = self._atr_at(pair, current_time) or entry_atr
             stop_price = current_rate - self.trail_atr.value * current_atr
         else:
             stop_price = trade.open_rate - self.stop_atr.value * entry_atr

@@ -1,0 +1,81 @@
+{
+    "$comment": "Backtest/hyperopt config. Data source: OKX USDT spot pairs (deep public OHLCV history; Kraken's public API only serves ~720 candles so it cannot feed multi-year backtests). Live trading remains Kraken/USDC \u2014 same assets, near-identical price series. Static whitelist approximates the live filtered universe (top liquid majors). Fees are set per-run via --fee to model Kraken taker + slippage.",
+    "trading_mode": "spot",
+    "dry_run": true,
+    "dry_run_wallet": 1000,
+    "stake_currency": "USDT",
+    "stake_amount": "unlimited",
+    "tradable_balance_ratio": 0.99,
+    "max_open_trades": 3,
+    "process_only_new_candles": true,
+    "minimal_roi": {},
+    "use_exit_signal": true,
+    "exit_profit_only": false,
+    "ignore_roi_if_entry_signal": false,
+    "exchange": {
+        "name": "okx",
+        "key": "",
+        "secret": "",
+        "ccxt_config": {
+            "enableRateLimit": true
+        },
+        "ccxt_async_config": {
+            "enableRateLimit": true
+        },
+        "pair_whitelist": [
+            "BTC/USDT",
+            "ETH/USDT",
+            "SOL/USDT",
+            "ADA/USDT",
+            "XRP/USDT",
+            "LINK/USDT",
+            "DOGE/USDT",
+            "AVAX/USDT"
+        ],
+        "pair_blacklist": []
+    },
+    "pairlists": [
+        {
+            "method": "StaticPairList"
+        }
+    ],
+    "entry_pricing": {
+        "price_side": "other",
+        "use_order_book": true,
+        "order_book_top": 1,
+        "price_last_balance": 0.0,
+        "check_depth_of_market": {
+            "enabled": false,
+            "bids_to_ask_delta": 1
+        }
+    },
+    "exit_pricing": {
+        "price_side": "other",
+        "use_order_book": true,
+        "order_book_top": 1
+    },
+    "unfilledtimeout": {
+        "entry": 10,
+        "exit": 10,
+        "exit_timeout_count": 0,
+        "unit": "minutes"
+    },
+    "order_types": {
+        "entry": "limit",
+        "exit": "limit",
+        "emergency_exit": "market",
+        "force_entry": "limit",
+        "force_exit": "market",
+        "stoploss": "market",
+        "stoploss_on_exchange": false
+    },
+    "internals": {
+        "process_throttle_secs": 5
+    },
+    "dataformat_ohlcv": "feather",
+    "santinela": {
+        "risk_mode": "neutral",
+        "risk_per_trade_pct": 1.25,
+        "entries_enabled": true
+    }
+}

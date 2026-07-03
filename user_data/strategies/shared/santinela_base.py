@@ -46,7 +46,10 @@ class SantinelaBase(IStrategy):
     stoploss = -0.10
     use_custom_stoploss = True
 
-    startup_candle_count = 250
+    # 499: recursive-analysis shows the 4h EMA200 informative needs ~500
+    # warmup candles to converge (variance 1.06% at 250 -> 0.08% at 499).
+    # Stays under Kraken's 720-candle public OHLC limit for live warmup.
+    startup_candle_count = 499
 
     # Multiplier for the initial ATR stop; concrete strategies override.
     stop_atr_mult = 2.0
@@ -75,15 +78,13 @@ class SantinelaBase(IStrategy):
         # Re-clamp regardless of what the orchestrator wrote (S2).
         return max(0.05, min(pct, LOCKED.max_risk_per_trade_pct))
 
-    def _entry_atr(self, pair: str, default: float = 0.0) -> float:
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        if dataframe is None or dataframe.empty or "atr" not in dataframe.columns:
-            return default
-        value = dataframe["atr"].iloc[-1]
-        return float(value) if value == value else default  # NaN guard
-
     def _atr_at(self, pair: str, when: datetime) -> float:
-        """ATR of the candle the trade opened on (falls back to latest)."""
+        """ATR of the newest candle at or before ``when``.
+
+        Always time-bounded: in backtesting the analyzed dataframe spans the
+        whole timerange, so an unbounded "latest row" lookup would peek into
+        the future (lookahead bias). Returns 0.0 when unavailable.
+        """
         dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
         if dataframe is None or dataframe.empty or "atr" not in dataframe.columns:
             return 0.0
@@ -91,7 +92,7 @@ class SantinelaBase(IStrategy):
         if rows.empty:
             return 0.0
         value = rows["atr"].iloc[-1]
-        return float(value) if value == value else 0.0
+        return float(value) if value == value else 0.0  # NaN guard
 
     # -------------------------------------------------------- S2 sizing --
 
@@ -108,7 +109,7 @@ class SantinelaBase(IStrategy):
         side: str,
         **kwargs,
     ) -> float:
-        atr_value = self._entry_atr(pair)
+        atr_value = self._atr_at(pair, current_time)
         if atr_value <= 0:
             logger.info("%s: no ATR available — refusing to size entry", pair)
             return 0.0
@@ -116,7 +117,9 @@ class SantinelaBase(IStrategy):
         equity = self.wallets.get_total_stake_amount()
 
         # Remaining S4 exposure headroom also caps the stake.
-        open_stakes = sum(t.stake_amount for t in Trade.get_open_trades())
+        open_stakes = sum(
+            t.stake_amount for t in Trade.get_trades_proxy(is_open=True)
+        )
         headroom = equity * LOCKED.max_total_exposure_pct / 100.0 - open_stakes
 
         stake = position_stake(
@@ -164,8 +167,9 @@ class SantinelaBase(IStrategy):
         now = current_time if current_time.tzinfo else current_time.replace(
             tzinfo=timezone.utc
         )
-        open_trades = Trade.get_open_trade_count()
-        open_stakes = sum(t.stake_amount for t in Trade.get_open_trades())
+        open_positions = Trade.get_trades_proxy(is_open=True)
+        open_trades = len(open_positions)
+        open_stakes = sum(t.stake_amount for t in open_positions)
         equity = self.wallets.get_total_stake_amount()
 
         decision = can_open_new_trade(
