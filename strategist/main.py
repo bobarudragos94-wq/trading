@@ -41,6 +41,7 @@ from strategist import journal
 from strategist.llm_client import request_verdict
 from strategist.market_snapshot import build_snapshot
 from strategist.telegram_alerts import alert_breaker, send_alert
+from strategist.telegram_commands import TelegramCommands
 
 logger = logging.getLogger("santinela.brain")
 
@@ -195,6 +196,7 @@ def run_forever() -> None:  # pragma: no cover - exercised in M5 demo
     )
     api = FreqtradeAPI()
     state = boot_checks(api)
+    commands = TelegramCommands(api)
     send_alert("🟢 Santinela brain started "
                f"(mode: {os.environ.get('TRADING_MODE', 'dry')}).")
 
@@ -207,6 +209,7 @@ def run_forever() -> None:  # pragma: no cover - exercised in M5 demo
         now = datetime.now(timezone.utc)
         HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
         HEARTBEAT.touch()
+        commands.poll()  # /guard /verdict /panic (second bot token)
 
         killed = check_breakers(state, now).s7_killed
         if not killed and time.monotonic() - last_equity_poll >= EQUITY_POLL_SECONDS:

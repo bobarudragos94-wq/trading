@@ -79,7 +79,9 @@ services:
       FT_API_PASSWORD: ${FT_API_PASSWORD:?set FT_API_PASSWORD in .env}
       TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN:-}
+      SANTINELA_TELEGRAM_TOKEN: ${SANTINELA_TELEGRAM_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      ACKNOWLEDGE_DRAWDOWN: ${ACKNOWLEDGE_DRAWDOWN:-}
     command: ["python", "-m", "strategist.main"]
     healthcheck:
       test:
