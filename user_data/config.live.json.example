@@ -1,7 +1,9 @@
 {
-    "$comment": "LIVE config template. Copy to config.live.json (git-ignored) ONLY when the full go-live checklist in README.md is ticked. `make live` refuses to start without it. Keys/secrets still come from environment variables — never paste them here.",
+    "$comment": "LIVE config template. Copy to config.live.json (git-ignored) ONLY when the full go-live checklist in README.md is ticked. `make live` refuses to start without it. Keys/secrets still come from environment variables \u2014 never paste them here.",
     "trading_mode": "spot",
     "dry_run": false,
+    "db_url": "sqlite:///user_data/tradesv3.live.sqlite",
+    "force_entry_enable": false,
     "stake_currency": "USDC",
     "stake_amount": "unlimited",
     "tradable_balance_ratio": 0.99,
@@ -25,7 +27,7 @@
         },
         "pair_whitelist": [],
         "pair_blacklist": [
-            "(USDT|DAI|TUSD|PYUSD|USDS|EUR|EURT|GBP|USD|AUD|CAD|CHF|JPY|USDQ|RLUSD|USDG|EURQ|EURR|USTC)/.*",
+            "(USDT|DAI|TUSD|PYUSD|USDS|USDE|USDD|USD1|FDUSD|BUSD|GUSD|SUSD|EURC|EURT|EURR|EURQ|USDQ|RLUSD|USDG|UST|USTC|EUR|GBP|USD|AUD|CAD|CHF|JPY)/.*",
             ".*(3L|3S|4L|4S|UP|DOWN|BULL|BEAR)/.*"
         ]
     },

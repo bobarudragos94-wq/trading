@@ -1,8 +1,10 @@
 {
-    "$comment": "Santinela dry-run config. Secrets and Telegram/API credentials are injected via FREQTRADE__* environment variables (see docker-compose.yml) — never stored here. Locked risk surfaces live in riskguard/, not in this file.",
+    "$comment": "Santinela dry-run config. Secrets and Telegram/API credentials are injected via FREQTRADE__* environment variables (see docker-compose.yml) \u2014 never stored here. Locked risk surfaces live in riskguard/, not in this file.",
     "trading_mode": "spot",
     "dry_run": true,
     "dry_run_wallet": 1000,
+    "db_url": "sqlite:///user_data/tradesv3.dryrun.sqlite",
+    "force_entry_enable": true,
     "stake_currency": "USDC",
     "stake_amount": "unlimited",
     "tradable_balance_ratio": 0.99,
@@ -26,7 +28,7 @@
         },
         "pair_whitelist": [],
         "pair_blacklist": [
-            "(USDT|DAI|TUSD|PYUSD|USDS|EUR|EURT|GBP|USD|AUD|CAD|CHF|JPY|USDQ|RLUSD|USDG|EURQ|EURR|USTC)/.*",
+            "(USDT|DAI|TUSD|PYUSD|USDS|USDE|USDD|USD1|FDUSD|BUSD|GUSD|SUSD|EURC|EURT|EURR|EURQ|USDQ|RLUSD|USDG|UST|USTC|EUR|GBP|USD|AUD|CAD|CHF|JPY)/.*",
             ".*(3L|3S|4L|4S|UP|DOWN|BULL|BEAR)/.*"
         ]
     },
